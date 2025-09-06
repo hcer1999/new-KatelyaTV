@@ -79,6 +79,12 @@ export async function GET(request: Request) {
         const userSettings = await storage.getUserSettings(userName);
         shouldFilterAdult = userSettings?.filter_adult_content !== false;
       } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to get user settings, using default filter:', {
+          error: error,
+          message: error instanceof Error ? error.message : String(error),
+          userName: userName,
+        });
         shouldFilterAdult = true;
       }
     }

@@ -499,7 +499,22 @@ export class D1Storage implements IStorage {
 
       return JSON.parse(result.config) as AdminConfig;
     } catch (err) {
-      console.error('Failed to get admin config:', err);
+      console.error('Failed to get admin config - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+
+      // 如果是表不存在的错误，返回 null 而不是抛出异常
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (
+        errorMessage.includes('no such table') ||
+        errorMessage.includes('admin_configs')
+      ) {
+        console.warn('admin_configs table does not exist, returning null');
+        return null;
+      }
+
       throw err;
     }
   }
@@ -639,6 +654,17 @@ export class D1Storage implements IStorage {
         stack: err instanceof Error ? err.stack : undefined,
         userName,
       });
+
+      // 如果是表不存在的错误，返回 null 而不是抛出异常
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (
+        errorMessage.includes('no such table') ||
+        errorMessage.includes('user_settings')
+      ) {
+        console.warn('user_settings table does not exist, returning null');
+        return null;
+      }
+
       throw err;
     }
   }
