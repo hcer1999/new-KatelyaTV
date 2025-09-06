@@ -146,6 +146,7 @@ export async function GET(request: Request) {
         clearTimeout(timeoutId);
         return result as Awaited<ReturnType<typeof searchFromApi>>;
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.warn(`Search failed for site ${site.key}:`, error);
         return [];
       }
@@ -178,6 +179,7 @@ export async function GET(request: Request) {
     );
     return addCorsHeaders(response);
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('Batch search error:', error);
     const response = NextResponse.json(
       {

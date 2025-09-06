@@ -16,7 +16,12 @@ export const runtime = 'edge';
  * 2. 带 key=source+id，返回单条收藏（Favorite | null）。
  */
 export async function GET(request: NextRequest) {
-  let authInfo: any;
+  let authInfo: {
+    username?: string;
+    password?: string;
+    signature?: string;
+    timestamp?: number;
+  } | null = null;
   let key: string | null = null;
   try {
     // 从 cookie 获取用户信息
@@ -67,8 +72,13 @@ export async function GET(request: NextRequest) {
  * body: { key: string; favorite: Favorite }
  */
 export async function POST(request: NextRequest) {
-  let authInfo: any;
-  let key: string = '';
+  let authInfo: {
+    username?: string;
+    password?: string;
+    signature?: string;
+    timestamp?: number;
+  } | null = null;
+  let key = '';
   let favorite: Favorite | undefined;
   try {
     // 从 cookie 获取用户信息
@@ -139,8 +149,13 @@ export async function POST(request: NextRequest) {
  * 2. 带 key=source+id -> 删除单条收藏
  */
 export async function DELETE(request: NextRequest) {
-  let authInfo: any;
-  let username: string = '';
+  let authInfo: {
+    username?: string;
+    password?: string;
+    signature?: string;
+    timestamp?: number;
+  } | null = null;
+  let username = '';
   let key: string | null = null;
   try {
     // 从 cookie 获取用户信息

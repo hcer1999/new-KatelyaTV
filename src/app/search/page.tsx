@@ -93,7 +93,10 @@ function SearchPageClient() {
       const name = result.source_name || key;
 
       if (sourceMap.has(key)) {
-        sourceMap.get(key)!.count++;
+        const existing = sourceMap.get(key);
+        if (existing) {
+          existing.count++;
+        }
       } else {
         sourceMap.set(key, { key, name, count: 1 });
       }
@@ -251,6 +254,7 @@ function SearchPageClient() {
         cached: data.cached || false,
       };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error(`Batch ${batch} search failed:`, error);
       return { results: [], sitesSearched: 0, cached: false };
     }
@@ -337,6 +341,7 @@ function SearchPageClient() {
         adult: [],
       });
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Search failed:', error);
       setSearchResults([]);
       setGroupedResults({ regular: [], adult: [] });

@@ -9,7 +9,12 @@ import { PlayRecord } from '@/lib/types';
 export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
-  let authInfo: any;
+  let authInfo: {
+    username?: string;
+    password?: string;
+    signature?: string;
+    timestamp?: number;
+  } | null = null;
   try {
     // 从 cookie 获取用户信息
     authInfo = getAuthInfoFromCookie(request);
@@ -37,8 +42,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  let authInfo: any;
-  let key: string = '';
+  let authInfo: {
+    username?: string;
+    password?: string;
+    signature?: string;
+    timestamp?: number;
+  } | null = null;
+  let key = '';
   let record: PlayRecord | undefined;
   try {
     // 从 cookie 获取用户信息
@@ -104,8 +114,13 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  let authInfo: any;
-  let username: string = '';
+  let authInfo: {
+    username?: string;
+    password?: string;
+    signature?: string;
+    timestamp?: number;
+  } | null = null;
+  let username = '';
   let key: string | null = null;
   try {
     // 从 cookie 获取用户信息
