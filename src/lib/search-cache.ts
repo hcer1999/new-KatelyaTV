@@ -70,11 +70,15 @@ export function setCachedSearchResult(
 // 清理过期缓存
 function cleanExpiredCache(): void {
   const now = Date.now();
-  for (const [key, item] of searchCache.entries()) {
+  const keysToDelete: string[] = [];
+
+  searchCache.forEach((item, key) => {
     if (now - item.timestamp > CACHE_EXPIRY) {
-      searchCache.delete(key);
+      keysToDelete.push(key);
     }
-  }
+  });
+
+  keysToDelete.forEach((key) => searchCache.delete(key));
 }
 
 // 清空所有缓存
