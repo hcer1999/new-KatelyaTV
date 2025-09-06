@@ -1097,7 +1097,7 @@ function PlayPageClient() {
         isLive: false,
         muted: false,
         autoplay: true,
-        pip: false,
+        pip: true,
         autoSize: false,
         autoMini: false,
         screenshot: false,
