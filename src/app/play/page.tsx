@@ -23,7 +23,9 @@ import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
 
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
-import SkipController, { SkipSettingsButton } from '@/components/SkipController';
+import SkipController, {
+  SkipSettingsButton,
+} from '@/components/SkipController';
 
 // 扩展 HTMLVideoElement 类型以支持 hls 属性
 declare global {
@@ -513,7 +515,7 @@ function PlayPageClient() {
         if (data.adult_results && Array.isArray(data.adult_results)) {
           allResults = allResults.concat(data.adult_results);
         }
-        
+
         // 兼容旧格式（如果有的话）
         if (data.results && Array.isArray(data.results)) {
           allResults = data.results;
@@ -1095,7 +1097,7 @@ function PlayPageClient() {
         isLive: false,
         muted: false,
         autoplay: true,
-        pip: true,
+        pip: false,
         autoSize: false,
         autoMini: false,
         screenshot: false,
@@ -1237,7 +1239,7 @@ function PlayPageClient() {
       artPlayerRef.current.on('video:timeupdate', () => {
         const currentTime = artPlayerRef.current.currentTime || 0;
         setCurrentPlayTime(currentTime);
-        
+
         // 同时更新时长（防止ready事件中获取不到）
         const duration = artPlayerRef.current.duration || 0;
         if (duration > 0 && videoDuration !== duration) {
@@ -1496,7 +1498,7 @@ function PlayPageClient() {
 
   return (
     <PageLayout activePath='/play'>
-      <div className='flex flex-col gap-3 py-4 px-5 lg:px-[3rem] 2xl:px-20'>
+      <div className='flex flex-col gap-3 py-4 2xl:px-20'>
         {/* 第一行：影片标题和操作按钮 */}
         <div className='py-1 flex items-center justify-between'>
           <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
@@ -1507,7 +1509,7 @@ function PlayPageClient() {
               </span>
             )}
           </h1>
-          
+
           {/* 跳过设置按钮 */}
           {currentSource && currentId && (
             <SkipSettingsButton onClick={() => setIsSkipSettingMode(true)} />

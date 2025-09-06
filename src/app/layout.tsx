@@ -13,7 +13,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 // 动态生成 metadata，支持配置更新后的标题变化
 export async function generateMetadata(): Promise<Metadata> {
-  let siteName = process.env.SITE_NAME || 'KatelyaTV';
+  let siteName = process.env.SITE_NAME || 'JiabanTV';
   if (
     process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'd1' &&
     process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'upstash'
@@ -50,10 +50,10 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let siteName = process.env.SITE_NAME || 'KatelyaTV';
+  let siteName = process.env.SITE_NAME || 'JiabanTV';
   let announcement =
     process.env.ANNOUNCEMENT ||
-    '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。Link Me TG：@katelya77';
+    '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。';
   let enableRegister = process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true';
   let imageProxy = process.env.NEXT_PUBLIC_IMAGE_PROXY || '';
   let doubanProxy = process.env.NEXT_PUBLIC_DOUBAN_PROXY || '';
@@ -87,6 +87,16 @@ export default async function RootLayout({
             __html: `window.RUNTIME_CONFIG = ${JSON.stringify(runtimeConfig)};`,
           }}
         />
+        <meta name='description' content={announcement} />
+        <meta name='keywords' content='影视,搜索,播放,聚合' />
+        <meta name='author' content='JiabanTV' />
+        <meta name='copyright' content='JiabanTV' />
+        <meta name='robots' content='index, follow' />
+        <meta
+          name='viewport'
+          content='width=device-width, initial-scale=1.0, user-scalable=no'
+        />
+        <meta name='apple-mobile-web-app-capable' content='yes' />
       </head>
       <body
         className={`${inter.className} min-h-screen bg-white text-gray-900 dark:bg-black dark:text-gray-200`}

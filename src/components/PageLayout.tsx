@@ -172,8 +172,8 @@ const PageLayout = ({ children, activePath = '/' }: PageLayoutProps) => {
       {/* 桌面端顶部导航栏 (fixed) */}
       <TopNavbar activePath={activePath} />
 
-  {/* 主内容区域 - 预留桌面端顶部导航高度 64px */}
-  <div className='relative min-w-0 transition-all duration-300 md:pt-16'>
+      {/* 主内容区域 - 预留桌面端顶部导航高度 64px */}
+      <div className='relative min-w-0 transition-all duration-300 md:pt-16'>
         {/* 桌面端左上角返回按钮 */}
         {['/play'].includes(activePath) && (
           <div className='absolute top-3 left-1 z-20 hidden md:flex'>
@@ -186,22 +186,16 @@ const PageLayout = ({ children, activePath = '/' }: PageLayoutProps) => {
           {/* 使用flex布局实现宽度控制 */}
           <div className='flex w-full min-h-[calc(100vh-4rem)]'>
             {/* 左侧留白区域 - 播放页面占8.33%，其他页面占16.67% */}
-            <div
-              className='hidden md:block flex-shrink-0'
-              style={{ 
-                width: ['/play'].includes(activePath) ? '8.33%' : '16.67%' 
-              }}
-            ></div>
 
             {/* 主内容区 - 播放页面占83.33%，其他页面占66.67% */}
             <div
-              className='flex-1 md:flex-none rounded-container w-full'
-              style={{ 
-                width: ['/play'].includes(activePath) ? '83.33%' : '66.67%' 
+              className='flex-1 md:flex-none rounded-container m-auto'
+              style={{
+                width: ['/play'].includes(activePath) ? '83.33%' : '66.67%',
               }}
             >
               <div
-                className='p-4 md:p-8 lg:p-10'
+                className='p-4'
                 style={{
                   paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom))',
                 }}
@@ -209,14 +203,6 @@ const PageLayout = ({ children, activePath = '/' }: PageLayoutProps) => {
                 {children}
               </div>
             </div>
-
-            {/* 右侧留白区域 - 播放页面占8.33%，其他页面占16.67% */}
-            <div
-              className='hidden md:block flex-shrink-0'
-              style={{ 
-                width: ['/play'].includes(activePath) ? '8.33%' : '16.67%' 
-              }}
-            ></div>
           </div>
         </main>
       </div>
