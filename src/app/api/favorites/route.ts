@@ -16,15 +16,17 @@ export const runtime = 'edge';
  * 2. 带 key=source+id，返回单条收藏（Favorite | null）。
  */
 export async function GET(request: NextRequest) {
+  let authInfo: any;
+  let key: string | null = null;
   try {
     // 从 cookie 获取用户信息
-    const authInfo = getAuthInfoFromCookie(request);
+    authInfo = getAuthInfoFromCookie(request);
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const key = searchParams.get('key');
+    key = searchParams.get('key');
 
     // 查询单条收藏
     if (key) {
@@ -43,9 +45,18 @@ export async function GET(request: NextRequest) {
     const favorites = await db.getAllFavorites(authInfo.username);
     return NextResponse.json(favorites, { status: 200 });
   } catch (err) {
-    console.error('获取收藏失败', err);
+    console.error('获取收藏失败 - 详细错误信息:', {
+      error: err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      username: authInfo?.username,
+      key: key,
+    });
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      {
+        error: 'Internal Server Error',
+        details: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     );
   }
@@ -56,15 +67,20 @@ export async function GET(request: NextRequest) {
  * body: { key: string; favorite: Favorite }
  */
 export async function POST(request: NextRequest) {
+  let authInfo: any;
+  let key: string = '';
+  let favorite: Favorite | undefined;
   try {
     // 从 cookie 获取用户信息
-    const authInfo = getAuthInfoFromCookie(request);
+    authInfo = getAuthInfoFromCookie(request);
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { key, favorite }: { key: string; favorite: Favorite } = body;
+    const parsedBody: { key: string; favorite: Favorite } = body;
+    key = parsedBody.key;
+    favorite = parsedBody.favorite;
 
     if (!key || !favorite) {
       return NextResponse.json(
@@ -98,9 +114,19 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
-    console.error('保存收藏失败', err);
+    console.error('保存收藏失败 - 详细错误信息:', {
+      error: err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      username: authInfo?.username,
+      key: key,
+      favorite: favorite,
+    });
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      {
+        error: 'Internal Server Error',
+        details: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     );
   }
@@ -113,16 +139,19 @@ export async function POST(request: NextRequest) {
  * 2. 带 key=source+id -> 删除单条收藏
  */
 export async function DELETE(request: NextRequest) {
+  let authInfo: any;
+  let username: string = '';
+  let key: string | null = null;
   try {
     // 从 cookie 获取用户信息
-    const authInfo = getAuthInfoFromCookie(request);
+    authInfo = getAuthInfoFromCookie(request);
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const username = authInfo.username;
+    username = authInfo.username;
     const { searchParams } = new URL(request.url);
-    const key = searchParams.get('key');
+    key = searchParams.get('key');
 
     if (key) {
       // 删除单条
@@ -147,9 +176,18 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
-    console.error('删除收藏失败', err);
+    console.error('删除收藏失败 - 详细错误信息:', {
+      error: err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      username: username,
+      key: key,
+    });
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      {
+        error: 'Internal Server Error',
+        details: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     );
   }

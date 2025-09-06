@@ -9,9 +9,10 @@ import { PlayRecord } from '@/lib/types';
 export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
+  let authInfo: any;
   try {
     // 从 cookie 获取用户信息
-    const authInfo = getAuthInfoFromCookie(request);
+    authInfo = getAuthInfoFromCookie(request);
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -19,24 +20,37 @@ export async function GET(request: NextRequest) {
     const records = await db.getAllPlayRecords(authInfo.username);
     return NextResponse.json(records, { status: 200 });
   } catch (err) {
-    console.error('获取播放记录失败', err);
+    console.error('获取播放记录失败 - 详细错误信息:', {
+      error: err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      username: authInfo?.username,
+    });
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      {
+        error: 'Internal Server Error',
+        details: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     );
   }
 }
 
 export async function POST(request: NextRequest) {
+  let authInfo: any;
+  let key: string = '';
+  let record: PlayRecord | undefined;
   try {
     // 从 cookie 获取用户信息
-    const authInfo = getAuthInfoFromCookie(request);
+    authInfo = getAuthInfoFromCookie(request);
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { key, record }: { key: string; record: PlayRecord } = body;
+    const parsedBody: { key: string; record: PlayRecord } = body;
+    key = parsedBody.key;
+    record = parsedBody.record;
 
     if (!key || !record) {
       return NextResponse.json(
@@ -71,25 +85,38 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
-    console.error('保存播放记录失败', err);
+    console.error('保存播放记录失败 - 详细错误信息:', {
+      error: err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      username: authInfo?.username,
+      key: key,
+      record: record,
+    });
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      {
+        error: 'Internal Server Error',
+        details: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     );
   }
 }
 
 export async function DELETE(request: NextRequest) {
+  let authInfo: any;
+  let username: string = '';
+  let key: string | null = null;
   try {
     // 从 cookie 获取用户信息
-    const authInfo = getAuthInfoFromCookie(request);
+    authInfo = getAuthInfoFromCookie(request);
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const username = authInfo.username;
+    username = authInfo.username;
     const { searchParams } = new URL(request.url);
-    const key = searchParams.get('key');
+    key = searchParams.get('key');
 
     if (key) {
       // 如果提供了 key，删除单条播放记录
@@ -116,9 +143,18 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
-    console.error('删除播放记录失败', err);
+    console.error('删除播放记录失败 - 详细错误信息:', {
+      error: err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      username: username,
+      key: key,
+    });
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      {
+        error: 'Internal Server Error',
+        details: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     );
   }

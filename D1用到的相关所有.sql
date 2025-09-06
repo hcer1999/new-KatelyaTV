@@ -283,15 +283,6 @@ CREATE INDEX IF NOT EXISTS idx_user_settings_username ON user_settings(username)
 CREATE INDEX IF NOT EXISTS idx_user_settings_updated_time ON user_settings(updated_time DESC);
 
 
--- 插入设置数据（请替换 'your_username' 为实际用户名）
-INSERT INTO user_settings (username, settings, updated_time) VALUES (
-  'admin',
-  '{"filter_adult_content":true,"theme":"auto","language":"zh-CN","auto_play":true,"video_quality":"auto"}',
-  strftime('%s', 'now')
-);
-
--- 验证数据插入成功
-SELECT * FROM user_settings WHERE username = 'admin';
 
 
 CREATE TABLE IF NOT EXISTS user_settings (
@@ -315,6 +306,30 @@ CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_settings_username ON user_settings(username);
 
 
+-- 插入设置数据（请替换 'your_username' 为实际用户名）
+INSERT INTO user_settings (
+  user_id,
+  username,
+  filter_adult_content,
+  theme,
+  language,
+  auto_play,
+  video_quality,
+  updated_at
+) VALUES (
+  1,                  -- 假设 admin 的 user_id = 1
+  'admin',
+  1,                  -- filter_adult_content = true
+  'auto',
+  'zh-CN',
+  1,                  -- auto_play = true
+  'auto',
+  CURRENT_TIMESTAMP
+);
+
+
+-- 验证数据插入成功
+SELECT * FROM user_settings WHERE username = 'admin';
 
 -- 创建跳过配置表
 CREATE TABLE IF NOT EXISTS skip_configs (

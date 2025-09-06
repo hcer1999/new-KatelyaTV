@@ -3,7 +3,13 @@
 import { Redis } from '@upstash/redis';
 
 import { AdminConfig } from './admin.types';
-import { EpisodeSkipConfig, Favorite, IStorage, PlayRecord, UserSettings } from './types';
+import {
+  EpisodeSkipConfig,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  UserSettings,
+} from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -361,14 +367,15 @@ export class UpstashRedisStorage implements IStorage {
       theme: 'auto',
       language: 'zh-CN',
       auto_play: false,
-      video_quality: 'auto'
+      video_quality: 'auto',
     };
-    const updated: UserSettings = { 
-      ...defaultSettings, 
-      ...current, 
-      ...settings,
-      filter_adult_content: settings.filter_adult_content ?? current?.filter_adult_content ?? true
-    };
+    const updated: UserSettings = {
+      ...defaultSettings,
+      ...(current || {}),
+      ...Object.fromEntries(
+        Object.entries(settings).filter(([, value]) => value !== undefined)
+      ),
+    } as UserSettings;
     await this.setUserSettings(userName, updated);
   }
 }
@@ -377,7 +384,8 @@ export class UpstashRedisStorage implements IStorage {
 function getUpstashRedisClient(): Redis {
   const legacyKey = Symbol.for('__MOONTV_UPSTASH_REDIS_CLIENT__');
   const globalKey = Symbol.for('__KATELYATV_UPSTASH_REDIS_CLIENT__');
-  let client: Redis | undefined = (global as any)[globalKey] || (global as any)[legacyKey];
+  let client: Redis | undefined =
+    (global as any)[globalKey] || (global as any)[legacyKey];
 
   if (!client) {
     const upstashUrl = process.env.UPSTASH_URL;

@@ -1,7 +1,13 @@
 /* eslint-disable no-console, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 import { AdminConfig } from './admin.types';
-import { EpisodeSkipConfig, Favorite, IStorage, PlayRecord, UserSettings } from './types';
+import {
+  EpisodeSkipConfig,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  UserSettings,
+} from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -79,7 +85,13 @@ export class D1Storage implements IStorage {
         search_title: result.search_title || undefined,
       };
     } catch (err) {
-      console.error('Failed to get play record:', err);
+      console.error('Failed to get play record - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        userName,
+        key,
+      });
       throw err;
     }
   }
@@ -115,7 +127,14 @@ export class D1Storage implements IStorage {
         )
         .run();
     } catch (err) {
-      console.error('Failed to set play record:', err);
+      console.error('Failed to set play record - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        userName,
+        key,
+        record,
+      });
       throw err;
     }
   }
@@ -151,7 +170,12 @@ export class D1Storage implements IStorage {
 
       return records;
     } catch (err) {
-      console.error('Failed to get all play records:', err);
+      console.error('Failed to get all play records - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        userName,
+      });
       throw err;
     }
   }
@@ -190,7 +214,13 @@ export class D1Storage implements IStorage {
         search_title: result.search_title,
       };
     } catch (err) {
-      console.error('Failed to get favorite:', err);
+      console.error('Failed to get favorite - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        userName,
+        key,
+      });
       throw err;
     }
   }
@@ -222,7 +252,14 @@ export class D1Storage implements IStorage {
         )
         .run();
     } catch (err) {
-      console.error('Failed to set favorite:', err);
+      console.error('Failed to set favorite - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        userName,
+        key,
+        favorite,
+      });
       throw err;
     }
   }
@@ -253,7 +290,12 @@ export class D1Storage implements IStorage {
 
       return favorites;
     } catch (err) {
-      console.error('Failed to get all favorites:', err);
+      console.error('Failed to get all favorites - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        userName,
+      });
       throw err;
     }
   }
@@ -447,7 +489,9 @@ export class D1Storage implements IStorage {
     try {
       const db = await this.getDatabase();
       const result = await db
-        .prepare('SELECT config_value as config FROM admin_configs WHERE config_key = ? LIMIT 1')
+        .prepare(
+          'SELECT config_value as config FROM admin_configs WHERE config_key = ? LIMIT 1'
+        )
         .bind('main_config')
         .first<{ config: string }>();
 
@@ -544,7 +588,7 @@ export class D1Storage implements IStorage {
         .all<any>();
 
       const configs: { [key: string]: EpisodeSkipConfig } = {};
-      
+
       for (const row of result.results) {
         configs[row.key] = {
           source: row.source,
@@ -583,13 +627,18 @@ export class D1Storage implements IStorage {
         .prepare('SELECT settings FROM user_settings WHERE username = ?')
         .bind(userName)
         .first();
-      
+
       if (row && row.settings) {
         return JSON.parse(row.settings as string) as UserSettings;
       }
       return null;
     } catch (err) {
-      console.error('Failed to get user settings:', err);
+      console.error('Failed to get user settings - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        userName,
+      });
       throw err;
     }
   }
@@ -601,14 +650,22 @@ export class D1Storage implements IStorage {
     try {
       const db = await this.getDatabase();
       await db
-        .prepare(`
+        .prepare(
+          `
           INSERT OR REPLACE INTO user_settings (username, settings, updated_time)
           VALUES (?, ?, ?)
-        `)
+        `
+        )
         .bind(userName, JSON.stringify(settings), Date.now())
         .run();
     } catch (err) {
-      console.error('Failed to set user settings:', err);
+      console.error('Failed to set user settings - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        userName,
+        settings,
+      });
       throw err;
     }
   }
@@ -617,20 +674,32 @@ export class D1Storage implements IStorage {
     userName: string,
     settings: Partial<UserSettings>
   ): Promise<void> {
-    const current = await this.getUserSettings(userName);
-    const defaultSettings: UserSettings = {
-      filter_adult_content: true,
-      theme: 'auto',
-      language: 'zh-CN',
-      auto_play: false,
-      video_quality: 'auto'
-    };
-    const updated: UserSettings = { 
-      ...defaultSettings, 
-      ...current, 
-      ...settings,
-      filter_adult_content: settings.filter_adult_content ?? current?.filter_adult_content ?? true
-    };
-    await this.setUserSettings(userName, updated);
+    try {
+      const current = await this.getUserSettings(userName);
+      const defaultSettings: UserSettings = {
+        filter_adult_content: true,
+        theme: 'auto',
+        language: 'zh-CN',
+        auto_play: false,
+        video_quality: 'auto',
+      };
+      const updated: UserSettings = {
+        ...defaultSettings,
+        ...(current || {}),
+        ...Object.fromEntries(
+          Object.entries(settings).filter(([, value]) => value !== undefined)
+        ),
+      } as UserSettings;
+      await this.setUserSettings(userName, updated);
+    } catch (err) {
+      console.error('Failed to update user settings - 详细错误信息:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        userName,
+        settings,
+      });
+      throw err;
+    }
   }
 }

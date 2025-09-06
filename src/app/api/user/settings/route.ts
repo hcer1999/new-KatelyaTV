@@ -9,70 +9,87 @@ export const runtime = 'edge';
 
 // 获取用户设置
 export async function GET(_request: NextRequest) {
+  let userName = '';
   try {
     const headersList = headers();
     const authorization = headersList.get('Authorization');
-    
+
     if (!authorization) {
       return NextResponse.json({ error: '未授权访问' }, { status: 401 });
     }
 
-    const userName = authorization.split(' ')[1]; // 假设格式为 "Bearer username"
-    
+    userName = authorization.split(' ')[1]; // 假设格式为 "Bearer username"
+
     if (!userName) {
       return NextResponse.json({ error: '用户名不能为空' }, { status: 400 });
     }
 
     const storage = getStorage();
     const settings = await storage.getUserSettings(userName);
-    
-    return NextResponse.json({ 
-      settings: settings || {
-        filter_adult_content: true, // 默认开启成人内容过滤
-        theme: 'auto',
-        language: 'zh-CN',
-        auto_play: true,
-        video_quality: 'auto'
+
+    return NextResponse.json(
+      {
+        settings: settings || {
+          filter_adult_content: true, // 默认开启成人内容过滤
+          theme: 'auto',
+          language: 'zh-CN',
+          auto_play: true,
+          video_quality: 'auto',
+        },
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
       }
-    }, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
+    );
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Error getting user settings:', error);
-    return NextResponse.json({ error: '获取用户设置失败' }, { status: 500 });
+    console.error('Error getting user settings - 详细错误信息:', {
+      error: error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      userName: userName,
+    });
+    return NextResponse.json(
+      {
+        error: '获取用户设置失败',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
 }
 
 // 更新用户设置
 export async function PATCH(request: NextRequest) {
+  let userName = '';
+  let settings: Partial<UserSettings> | undefined;
   try {
     const headersList = headers();
     const authorization = headersList.get('Authorization');
-    
+
     if (!authorization) {
       return NextResponse.json({ error: '未授权访问' }, { status: 401 });
     }
 
-    const userName = authorization.split(' ')[1];
-    
+    userName = authorization.split(' ')[1];
+
     if (!userName) {
       return NextResponse.json({ error: '用户名不能为空' }, { status: 400 });
     }
 
     const body = await request.json();
-    const { settings } = body as { settings: Partial<UserSettings> };
-    
+    settings = (body as { settings: Partial<UserSettings> }).settings;
+
     if (!settings) {
       return NextResponse.json({ error: '设置数据不能为空' }, { status: 400 });
     }
 
     const storage = getStorage();
-    
+
     // 验证用户存在
     const userExists = await storage.checkUserExist(userName);
     if (!userExists) {
@@ -80,49 +97,66 @@ export async function PATCH(request: NextRequest) {
     }
 
     await storage.updateUserSettings(userName, settings);
-    
-    return NextResponse.json({ 
-      success: true,
-      message: '设置更新成功' 
-    }, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: '设置更新成功',
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
       }
-    });
+    );
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Error updating user settings:', error);
-    return NextResponse.json({ error: '更新用户设置失败' }, { status: 500 });
+    console.error('Error updating user settings - 详细错误信息:', {
+      error: error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      userName: userName,
+      settings: settings,
+    });
+    return NextResponse.json(
+      {
+        error: '更新用户设置失败',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
 }
 
 // 重置用户设置
 export async function PUT(request: NextRequest) {
+  let userName = '';
+  let settings: UserSettings | undefined;
   try {
     const headersList = headers();
     const authorization = headersList.get('Authorization');
-    
+
     if (!authorization) {
       return NextResponse.json({ error: '未授权访问' }, { status: 401 });
     }
 
-    const userName = authorization.split(' ')[1];
-    
+    userName = authorization.split(' ')[1];
+
     if (!userName) {
       return NextResponse.json({ error: '用户名不能为空' }, { status: 400 });
     }
 
     const body = await request.json();
-    const { settings } = body as { settings: UserSettings };
-    
+    settings = (body as { settings: UserSettings }).settings;
+
     if (!settings) {
       return NextResponse.json({ error: '设置数据不能为空' }, { status: 400 });
     }
 
     const storage = getStorage();
-    
+
     // 验证用户存在
     const userExists = await storage.checkUserExist(userName);
     if (!userExists) {
@@ -130,14 +164,26 @@ export async function PUT(request: NextRequest) {
     }
 
     await storage.setUserSettings(userName, settings);
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       success: true,
-      message: '设置已重置' 
+      message: '设置已重置',
     });
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Error resetting user settings:', error);
-    return NextResponse.json({ error: '重置用户设置失败' }, { status: 500 });
+    console.error('Error resetting user settings - 详细错误信息:', {
+      error: error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      userName: userName,
+      settings: settings,
+    });
+    return NextResponse.json(
+      {
+        error: '重置用户设置失败',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
 }
