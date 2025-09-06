@@ -180,13 +180,22 @@ export async function GET(request: Request) {
     return addCorsHeaders(response);
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Batch search error:', error);
+    console.error('Batch search error - 详细错误信息:', {
+      error: error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      query: query,
+      batch: batch,
+      userName: userName,
+      url: request.url,
+    });
     const response = NextResponse.json(
       {
         results: [],
         batch,
         completed: false,
         error: 'Search failed',
+        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );
