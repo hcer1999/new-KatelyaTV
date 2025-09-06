@@ -14,7 +14,6 @@ NEXT_PUBLIC_SITE_NAME = "JiabanTV"
 NEXT_PUBLIC_SITE_DESCRIPTION = "高性能影视播放平台"
 USERNAME = "admin"
 NEXT_PUBLIC_ENABLE_REGISTER = "false"
-PASSWORD = "bujiaban007"
 
 # NextAuth 配置
 NEXTAUTH_URL = "https://tvb.bujiaban.tv"
@@ -49,7 +48,7 @@ database_name = "katelyatv-db"
 database_id = "9152539c-f412-4721-9b32-f618bc43d074"
 
 [build]
-command = "pnpm pages:build"
+# command = "pnpm pages:build"
 environment = { NODE_VERSION = "18" }
 
 [[build.environment_variables]]
