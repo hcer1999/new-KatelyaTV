@@ -133,6 +133,15 @@ function shouldSkipAuth(pathname: string): boolean {
 // 配置middleware匹配规则
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|login|warning|api/login|api/register|api/logout|api/cron|api/server-config|api/search|api/detail|api/image-proxy|api/tvbox).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/search (including subpaths like api/search/batch)
+     * - api/debug (including subpaths)
+     * - api/login, api/register, etc.
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico
+     */
+    '/((?!api/search|api/debug|api/login|api/register|api/logout|api/cron|api/server-config|api/detail|api/image-proxy|api/tvbox|_next/static|_next/image|favicon.ico|login|warning).*)',
   ],
 };

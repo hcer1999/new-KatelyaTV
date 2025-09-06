@@ -17,9 +17,17 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: Request) {
+  console.log('Batch search started:', {
+    url: request.url,
+    timestamp: new Date().toISOString(),
+    runtime: 'edge',
+  });
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
   const batch = searchParams.get('batch') || 'high'; // high, medium, low
+
+  console.log('Parsed parameters:', { query, batch });
 
   // 从 Authorization header 或 query parameter 获取用户名
   let userName: string | undefined = searchParams.get('user') || undefined;
@@ -31,6 +39,7 @@ export async function GET(request: Request) {
   }
 
   if (!query) {
+    console.log('No query provided, returning empty results');
     const cacheTime = await getCacheTime();
     const response = NextResponse.json(
       {
@@ -49,9 +58,13 @@ export async function GET(request: Request) {
   }
 
   try {
+    console.log('Starting main search logic');
+
     // 检查缓存
+    console.log('Checking cache...');
     const cachedResults = getCachedSearchResult(query, batch, userName);
     if (cachedResults) {
+      console.log('Cache hit, returning cached results:', cachedResults.length);
       const cacheTime = await getCacheTime();
       const response = NextResponse.json(
         {
