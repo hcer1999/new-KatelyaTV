@@ -31,25 +31,6 @@ function SearchPageClient() {
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
 
-  // 分批加载状态
-  const [batchLoading, setBatchLoading] = useState<{
-    high: boolean;
-    medium: boolean;
-    low: boolean;
-  }>({ high: false, medium: false, low: false });
-
-  const [batchResults, setBatchResults] = useState<{
-    high: SearchResult[];
-    medium: SearchResult[];
-    low: SearchResult[];
-  }>({ high: [], medium: [], low: [] });
-
-  const [loadingStats, setLoadingStats] = useState<{
-    totalSources: number;
-    completedSources: number;
-    currentBatch: string;
-  }>({ totalSources: 0, completedSources: 0, currentBatch: '' });
-
   // 分组结果状态
   const [groupedResults, setGroupedResults] = useState<{
     regular: SearchResult[];
@@ -58,13 +39,6 @@ function SearchPageClient() {
 
   // 分组标签页状态
   const [activeTab, setActiveTab] = useState<'regular' | 'adult'>('regular');
-
-  // 源筛选状态
-  const [sourceFilter, setSourceFilter] = useState<string>('all'); // 'all' 或具体源的key
-  const [availableSources, setAvailableSources] = useState<
-    Array<{ key: string; name: string; count: number }>
-  >([]);
-  const [showAllSources, setShowAllSources] = useState(false);
 
   // 获取默认聚合设置：只读取用户本地设置，默认为 true
   const getDefaultAggregate = () => {
@@ -80,34 +54,6 @@ function SearchPageClient() {
   const [viewMode, setViewMode] = useState<'agg' | 'all'>(() => {
     return getDefaultAggregate() ? 'agg' : 'all';
   });
-
-  // 统计各源的结果数量
-  const updateAvailableSources = (results: SearchResult[]) => {
-    const sourceMap = new Map<
-      string,
-      { key: string; name: string; count: number }
-    >();
-
-    results.forEach((result) => {
-      const key = result.source;
-      const name = result.source_name || key;
-
-      if (sourceMap.has(key)) {
-        const existing = sourceMap.get(key);
-        if (existing) {
-          existing.count++;
-        }
-      } else {
-        sourceMap.set(key, { key, name, count: 1 });
-      }
-    });
-
-    const sources = Array.from(sourceMap.values()).sort(
-      (a, b) => b.count - a.count
-    ); // 按结果数量降序排列
-
-    setAvailableSources(sources);
-  };
 
   // 聚合函数
   const aggregateResults = (results: SearchResult[]) => {
@@ -220,12 +166,10 @@ function SearchPageClient() {
     }
   }, [searchParams]);
 
-  // 分批搜索单个批次
-  const fetchBatchResults = async (
-    query: string,
-    batch: 'high' | 'medium' | 'low'
-  ) => {
+  const fetchSearchResults = async (query: string) => {
     try {
+      setIsLoading(true);
+
       // 获取用户认证信息
       const authInfo = getAuthInfoFromBrowserCookie();
 
@@ -235,10 +179,11 @@ function SearchPageClient() {
         headers['Authorization'] = `Bearer ${authInfo.username}`;
       }
 
+      // 简化的搜索请求 - 成人内容过滤现在在API层面自动处理
+      // 添加时间戳参数避免缓存问题
+      const timestamp = Date.now();
       const response = await fetch(
-        `/api/search/batch?q=${encodeURIComponent(
-          query.trim()
-        )}&batch=${batch}`,
+        `/api/search?q=${encodeURIComponent(query.trim())}&t=${timestamp}`,
         {
           headers: {
             ...headers,
@@ -248,106 +193,36 @@ function SearchPageClient() {
       );
       const data = await response.json();
 
-      return {
-        results: data.results || [],
-        sitesSearched: data.sites_searched || 0,
-        cached: data.cached || false,
-      };
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(`Batch ${batch} search failed:`, error);
-      return { results: [], sitesSearched: 0, cached: false };
-    }
-  };
-
-  // 新的分批搜索函数
-  const fetchSearchResults = async (query: string) => {
-    try {
-      setIsLoading(true);
-      setShowResults(true);
-
-      // 重置状态
-      setBatchResults({ high: [], medium: [], low: [] });
-      setBatchLoading({ high: true, medium: false, low: false });
-      setLoadingStats({
-        totalSources: 0,
-        completedSources: 0,
-        currentBatch: 'high',
-      });
-      setSourceFilter('all');
-      setAvailableSources([]);
-      setShowAllSources(false);
-
-      // 第一批：高优先级源 (3秒内完成)
-      setLoadingStats((prev) => ({ ...prev, currentBatch: '高优先级源' }));
-      const highResults = await fetchBatchResults(query, 'high');
-
-      setBatchResults((prev) => ({ ...prev, high: highResults.results }));
-      setBatchLoading((prev) => ({ ...prev, high: false, medium: true }));
-      setLoadingStats((prev) => ({
-        ...prev,
-        completedSources: prev.completedSources + highResults.sitesSearched,
-        currentBatch: '中优先级源',
-      }));
-
-      // 立即显示第一批结果
-      const initialResults = highResults.results;
-      setSearchResults(initialResults);
-      updateAvailableSources(initialResults);
-
-      // 如果第一批有足够结果且来自缓存，可以考虑不继续搜索
-      if (initialResults.length >= 20 && highResults.cached) {
-        setBatchLoading({ high: false, medium: false, low: false });
-        setIsLoading(false);
-        setLoadingStats((prev) => ({ ...prev, currentBatch: '搜索完成' }));
-        return;
+      // 处理新的搜索结果格式
+      if (data.regular_results || data.adult_results) {
+        // 处理分组结果
+        setGroupedResults({
+          regular: data.regular_results || [],
+          adult: data.adult_results || [],
+        });
+        setSearchResults([
+          ...(data.regular_results || []),
+          ...(data.adult_results || []),
+        ]);
+      } else if (data.grouped) {
+        // 兼容旧的分组格式
+        setGroupedResults({
+          regular: data.regular || [],
+          adult: data.adult || [],
+        });
+        setSearchResults([...(data.regular || []), ...(data.adult || [])]);
+      } else {
+        // 兼容旧的普通结果格式
+        setGroupedResults(null);
+        setSearchResults(data.results || []);
       }
 
-      // 第二批：中优先级源 (5秒内完成)
-      const mediumResults = await fetchBatchResults(query, 'medium');
-
-      setBatchResults((prev) => ({ ...prev, medium: mediumResults.results }));
-      setBatchLoading((prev) => ({ ...prev, medium: false, low: true }));
-      setLoadingStats((prev) => ({
-        ...prev,
-        completedSources: prev.completedSources + mediumResults.sitesSearched,
-        currentBatch: '低优先级源',
-      }));
-
-      // 合并前两批结果
-      const combinedResults = [...initialResults, ...mediumResults.results];
-      setSearchResults(combinedResults);
-      updateAvailableSources(combinedResults);
-
-      // 第三批：低优先级源 (后台搜索)
-      const lowResults = await fetchBatchResults(query, 'low');
-
-      setBatchResults((prev) => ({ ...prev, low: lowResults.results }));
-      setBatchLoading({ high: false, medium: false, low: false });
-      setLoadingStats((prev) => ({
-        ...prev,
-        completedSources: prev.completedSources + lowResults.sitesSearched,
-        currentBatch: '搜索完成',
-      }));
-
-      // 最终合并所有结果
-      const allResults = [...combinedResults, ...lowResults.results];
-      setSearchResults(allResults);
-      updateAvailableSources(allResults);
-
-      // 兼容原有的分组逻辑 (简化处理)
-      setGroupedResults({
-        regular: allResults,
-        adult: [],
-      });
+      setShowResults(true);
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Search failed:', error);
+      setGroupedResults(null);
       setSearchResults([]);
-      setGroupedResults({ regular: [], adult: [] });
     } finally {
       setIsLoading(false);
-      setBatchLoading({ high: false, medium: false, low: false });
     }
   };
 
@@ -389,7 +264,7 @@ function SearchPageClient() {
         {/* 搜索框 */}
         <div className='mb-8'>
           <form onSubmit={handleSearch} className='max-w-2xl mx-auto'>
-            <div className='relative flex items-center gap-3'>
+            <div className='relative flex gap-2'>
               <div className='relative flex-1'>
                 <Search className='absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-gray-500' />
                 <input
@@ -399,29 +274,17 @@ function SearchPageClient() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder='搜索电影、电视剧...'
                   className='w-full h-12 rounded-lg bg-gray-50/80 py-3 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white border border-gray-200/50 shadow-sm dark:bg-gray-800 dark:text-gray-300 dark:placeholder-gray-500 dark:focus:bg-gray-700 dark:border-gray-700'
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleSearch(e as any);
-                    }
-                  }}
                 />
               </div>
               <button
                 type='submit'
                 disabled={isLoading || !searchQuery.trim()}
-                className='h-12 px-6 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center min-w-[120px]'
+                className='h-12 px-6 rounded-lg bg-green-500 text-white font-medium hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors dark:focus:ring-offset-gray-900'
               >
                 {isLoading ? (
-                  <div className='flex items-center gap-2'>
-                    <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
-                    <span className='text-sm'>搜索中</span>
-                  </div>
+                  <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-white'></div>
                 ) : (
-                  <div className='flex items-center gap-2'>
-                    <Search className='w-4 h-4' />
-                    <span className='text-sm font-medium'>搜索</span>
-                  </div>
+                  '搜索'
                 )}
               </button>
             </div>
@@ -434,92 +297,21 @@ function SearchPageClient() {
             <div className='flex flex-col justify-center items-center h-40 space-y-4'>
               <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
               <div className='text-center'>
-                <p className='text-sm text-gray-600 dark:text-gray-400'>
-                  正在搜索{loadingStats.currentBatch}...
+                <p className='text-lg font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                  正在疯狂搜索全网资源...
                 </p>
-                {loadingStats.completedSources > 0 && (
-                  <p className='text-xs text-gray-500 dark:text-gray-500 mt-1'>
-                    已搜索 {loadingStats.completedSources} 个源
-                  </p>
-                )}
+                <p className='text-sm text-gray-500 dark:text-gray-400'>
+                  请稍候，为您搜索最优质的内容
+                </p>
               </div>
             </div>
           ) : showResults ? (
             <section className='mb-12'>
               {/* 标题 + 聚合开关 */}
               <div className='mb-8 flex items-center justify-between'>
-                <div className='flex flex-col'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    搜索结果
-                  </h2>
-                  {/* 分批加载进度 */}
-                  {(batchLoading.high ||
-                    batchLoading.medium ||
-                    batchLoading.low) && (
-                    <div className='mt-2 flex items-center space-x-4 text-sm'>
-                      <div
-                        className={`flex items-center space-x-1 ${
-                          batchLoading.high
-                            ? 'text-blue-600'
-                            : batchResults.high.length > 0
-                            ? 'text-green-600'
-                            : 'text-gray-400'
-                        }`}
-                      >
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            batchLoading.high
-                              ? 'bg-blue-600 animate-pulse'
-                              : batchResults.high.length > 0
-                              ? 'bg-green-600'
-                              : 'bg-gray-400'
-                          }`}
-                        ></div>
-                        <span>高优先级</span>
-                      </div>
-                      <div
-                        className={`flex items-center space-x-1 ${
-                          batchLoading.medium
-                            ? 'text-blue-600'
-                            : batchResults.medium.length > 0
-                            ? 'text-green-600'
-                            : 'text-gray-400'
-                        }`}
-                      >
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            batchLoading.medium
-                              ? 'bg-blue-600 animate-pulse'
-                              : batchResults.medium.length > 0
-                              ? 'bg-green-600'
-                              : 'bg-gray-400'
-                          }`}
-                        ></div>
-                        <span>中优先级</span>
-                      </div>
-                      <div
-                        className={`flex items-center space-x-1 ${
-                          batchLoading.low
-                            ? 'text-blue-600'
-                            : batchResults.low.length > 0
-                            ? 'text-green-600'
-                            : 'text-gray-400'
-                        }`}
-                      >
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            batchLoading.low
-                              ? 'bg-blue-600 animate-pulse'
-                              : batchResults.low.length > 0
-                              ? 'bg-green-600'
-                              : 'bg-gray-400'
-                          }`}
-                        ></div>
-                        <span>低优先级</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+                  搜索结果
+                </h2>
                 {/* 聚合开关 */}
                 <label className='flex items-center gap-2 cursor-pointer select-none'>
                   <span className='text-sm text-gray-700 dark:text-gray-300'>
@@ -576,177 +368,8 @@ function SearchPageClient() {
                   )}
                 </div>
               )}
-
-              {/* 源筛选标签 - 重新设计的美观UI */}
-              {availableSources.length > 0 && (
-                <div className='mb-8'>
-                  {/* 标题区域 */}
-                  <div className='flex items-center justify-between mb-4'>
-                    <div className='flex items-center gap-2'>
-                      <div className='w-1 h-5 bg-gradient-to-b from-blue-500 to-purple-600 rounded-full'></div>
-                      <h3 className='text-base font-semibold text-gray-800 dark:text-gray-200'>
-                        视频源
-                      </h3>
-                    </div>
-                    <div className='flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400'>
-                      <div className='w-2 h-2 bg-green-500 rounded-full animate-pulse'></div>
-                      <span>
-                        {sourceFilter === 'all'
-                          ? `${searchResults.length} 个结果`
-                          : `${
-                              searchResults.filter(
-                                (r) => r.source === sourceFilter
-                              ).length
-                            } / ${searchResults.length} 个结果`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 源筛选卡片网格 */}
-                  <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3'>
-                    {/* 全部源卡片 */}
-                    <button
-                      onClick={() => setSourceFilter('all')}
-                      className={`group relative overflow-hidden rounded-xl p-3 transition-all duration-200 transform hover:scale-105 ${
-                        sourceFilter === 'all'
-                          ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md'
-                      }`}
-                    >
-                      <div className='flex flex-col items-center text-center'>
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                            sourceFilter === 'all'
-                              ? 'bg-white/20'
-                              : 'bg-gray-100 dark:bg-gray-700'
-                          }`}
-                        >
-                          <svg
-                            className='w-4 h-4'
-                            fill='currentColor'
-                            viewBox='0 0 20 20'
-                          >
-                            <path
-                              fillRule='evenodd'
-                              d='M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z'
-                              clipRule='evenodd'
-                            />
-                          </svg>
-                        </div>
-                        <span className='text-xs font-medium leading-tight'>
-                          全部源
-                        </span>
-                        <span
-                          className={`text-xs mt-1 ${
-                            sourceFilter === 'all'
-                              ? 'text-white/80'
-                              : 'text-gray-500 dark:text-gray-400'
-                          }`}
-                        >
-                          {searchResults.length}
-                        </span>
-                      </div>
-                      {sourceFilter === 'all' && (
-                        <div className='absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 animate-pulse'></div>
-                      )}
-                    </button>
-
-                    {/* 各个源的卡片 */}
-                    {(showAllSources
-                      ? availableSources
-                      : availableSources.slice(0, 11)
-                    ).map((source) => (
-                      <button
-                        key={source.key}
-                        onClick={() => setSourceFilter(source.key)}
-                        className={`group relative overflow-hidden rounded-xl p-3 transition-all duration-200 transform hover:scale-105 ${
-                          sourceFilter === source.key
-                            ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/25'
-                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-500 hover:shadow-md'
-                        }`}
-                        title={`${source.name} - ${source.count} 个结果`}
-                      >
-                        <div className='flex flex-col items-center text-center'>
-                          <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                              sourceFilter === source.key
-                                ? 'bg-white/20'
-                                : 'bg-gray-100 dark:bg-gray-700'
-                            }`}
-                          >
-                            <svg
-                              className='w-4 h-4'
-                              fill='currentColor'
-                              viewBox='0 0 20 20'
-                            >
-                              <path d='M2 6a2 2 0 012-2h6l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z' />
-                            </svg>
-                          </div>
-                          <span className='text-xs font-medium leading-tight line-clamp-1'>
-                            {source.name.length > 8
-                              ? source.name.substring(0, 8) + '...'
-                              : source.name}
-                          </span>
-                          <span
-                            className={`text-xs mt-1 ${
-                              sourceFilter === source.key
-                                ? 'text-white/80'
-                                : 'text-gray-500 dark:text-gray-400'
-                            }`}
-                          >
-                            {source.count}
-                          </span>
-                        </div>
-                        {sourceFilter === source.key && (
-                          <div className='absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 animate-pulse'></div>
-                        )}
-                      </button>
-                    ))}
-
-                    {/* 更多源的展开/收起按钮 */}
-                    {availableSources.length > 11 && (
-                      <button
-                        onClick={() => setShowAllSources(!showAllSources)}
-                        className='group relative overflow-hidden rounded-xl p-3 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50 border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700/50 dark:hover:to-gray-600/50 transition-all duration-200 transform hover:scale-105'
-                      >
-                        <div className='flex flex-col items-center text-center'>
-                          <div className='w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2 transition-transform group-hover:rotate-180'>
-                            <svg
-                              className='w-4 h-4'
-                              fill='currentColor'
-                              viewBox='0 0 20 20'
-                            >
-                              {showAllSources ? (
-                                <path
-                                  fillRule='evenodd'
-                                  d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'
-                                  clipRule='evenodd'
-                                />
-                              ) : (
-                                <path
-                                  fillRule='evenodd'
-                                  d='M3 10a1 1 0 011-1h4V6a1 1 0 112 0v3h4a1 1 0 110 2h-4v3a1 1 0 11-2 0v-3H4a1 1 0 01-1-1z'
-                                  clipRule='evenodd'
-                                />
-                              )}
-                            </svg>
-                          </div>
-                          <span className='text-xs font-medium'>
-                            {showAllSources ? '收起' : '更多'}
-                          </span>
-                          <span className='text-xs mt-1'>
-                            {showAllSources
-                              ? '显示少量'
-                              : `+${availableSources.length - 11}`}
-                          </span>
-                        </div>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
               <div
-                key={`search-results-${viewMode}-${activeTab}-${sourceFilter}`}
+                key={`search-results-${viewMode}-${activeTab}`}
                 className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'
               >
                 {(() => {
@@ -757,13 +380,6 @@ function SearchPageClient() {
                       activeTab === 'adult'
                         ? groupedResults.adult
                         : groupedResults.regular;
-                  }
-
-                  // 根据源筛选过滤结果
-                  if (sourceFilter !== 'all') {
-                    displayResults = displayResults.filter(
-                      (result) => result.source === sourceFilter
-                    );
                   }
 
                   // 聚合显示模式
