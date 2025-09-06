@@ -285,13 +285,13 @@ CREATE INDEX IF NOT EXISTS idx_user_settings_updated_time ON user_settings(updat
 
 -- 插入设置数据（请替换 'your_username' 为实际用户名）
 INSERT INTO user_settings (username, settings, updated_time) VALUES (
-  'your_username',
+  'admin',
   '{"filter_adult_content":true,"theme":"auto","language":"zh-CN","auto_play":true,"video_quality":"auto"}',
   strftime('%s', 'now')
 );
 
 -- 验证数据插入成功
-SELECT * FROM user_settings WHERE username = 'your_username';
+SELECT * FROM user_settings WHERE username = 'admin';
 
 
 CREATE TABLE IF NOT EXISTS user_settings (
