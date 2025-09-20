@@ -468,9 +468,313 @@ function PlayPageClient() {
     }
   }
 
+  // 显示选集选择器弹窗
+  const showEpisodeSelector = () => {
+    if (!detail?.episodes || detail.episodes.length <= 1) return;
+
+    // 移除已存在的选集选择器
+    const existingSelector = document.querySelector('.episode-selector-popup');
+    if (existingSelector) {
+      existingSelector.remove();
+    }
+
+    // 创建弹窗容器
+    const popup = document.createElement('div');
+    popup.className = 'episode-selector-popup';
+    popup.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      backdrop-filter: blur(6px);
+    `;
+
+    // 创建内容容器
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: min(90vw, 600px);
+      max-height: 85vh;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(55, 65, 81, 0.4);
+      backdrop-filter: blur(10px);
+    `;
+
+    // 创建标题
+    const title = document.createElement('h3');
+    title.textContent = `选择集数 (共${detail.episodes.length}集)`;
+    title.style.cssText = `
+      color: white;
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 24px 0;
+      text-align: center;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      letter-spacing: 0.5px;
+    `;
+
+    // 创建关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.cssText = `
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: rgba(55, 65, 81, 0.6);
+      border: none;
+      color: #d1d5db;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    `;
+    closeBtn.onmouseover = () => {
+      closeBtn.style.background = 'rgba(239, 68, 68, 0.8)';
+      closeBtn.style.color = 'white';
+      closeBtn.style.transform = 'scale(1.1)';
+    };
+    closeBtn.onmouseout = () => {
+      closeBtn.style.background = 'rgba(55, 65, 81, 0.6)';
+      closeBtn.style.color = '#d1d5db';
+      closeBtn.style.transform = 'scale(1)';
+    };
+
+    // 创建滚动容器
+    const scrollContainer = document.createElement('div');
+    scrollContainer.style.cssText = `
+      max-height: 450px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 4px;
+      margin: 0 -4px;
+    `;
+
+    // 创建集数网格
+    const grid = document.createElement('div');
+    const episodeCount = detail.episodes.length;
+
+    // 计算最佳列数：优先显示8列，但根据集数调整
+    let columns;
+    if (episodeCount <= 10) {
+      columns = Math.min(episodeCount, 5); // 10集以内最多5列
+    } else if (episodeCount <= 24) {
+      columns = 6; // 24集以内6列
+    } else if (episodeCount <= 50) {
+      columns = 8; // 50集以内8列
+    } else {
+      columns = 10; // 50集以上10列
+    }
+
+    grid.style.cssText = `
+      display: grid;
+      grid-template-columns: repeat(${columns}, 1fr);
+      gap: 12px;
+      padding: 8px;
+    `;
+
+    // 为每集创建按钮
+    detail.episodes.forEach((_, index) => {
+      const episodeBtn = document.createElement('button');
+      episodeBtn.textContent = (index + 1).toString();
+
+      const isCurrentEpisode = index === currentEpisodeIndex;
+      episodeBtn.style.cssText = `
+        padding: 16px 12px;
+        border: 2px solid ${
+          isCurrentEpisode ? '#22c55e' : 'rgba(55, 65, 81, 0.8)'
+        };
+        background: ${
+          isCurrentEpisode
+            ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+            : 'rgba(55, 65, 81, 0.6)'
+        };
+        color: ${isCurrentEpisode ? 'white' : '#e5e7eb'};
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: ${isCurrentEpisode ? '700' : '600'};
+        font-size: 15px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+        box-shadow: ${
+          isCurrentEpisode
+            ? '0 8px 25px -8px rgba(34, 197, 94, 0.5)'
+            : '0 4px 15px -4px rgba(0, 0, 0, 0.2)'
+        };
+        text-shadow: ${
+          isCurrentEpisode ? '0 1px 2px rgba(0, 0, 0, 0.3)' : 'none'
+        };
+      `;
+
+      // 悬停效果
+      episodeBtn.onmouseover = () => {
+        if (!isCurrentEpisode) {
+          episodeBtn.style.background =
+            'linear-gradient(135deg, #4b5563 0%, #374151 100%)';
+          episodeBtn.style.borderColor = '#6b7280';
+          episodeBtn.style.color = 'white';
+          episodeBtn.style.transform = 'translateY(-2px) scale(1.02)';
+          episodeBtn.style.boxShadow = '0 8px 25px -8px rgba(0, 0, 0, 0.4)';
+        } else {
+          episodeBtn.style.transform = 'translateY(-2px) scale(1.02)';
+          episodeBtn.style.boxShadow =
+            '0 12px 35px -8px rgba(34, 197, 94, 0.7)';
+        }
+      };
+
+      episodeBtn.onmouseout = () => {
+        if (!isCurrentEpisode) {
+          episodeBtn.style.background = 'rgba(55, 65, 81, 0.6)';
+          episodeBtn.style.borderColor = 'rgba(55, 65, 81, 0.8)';
+          episodeBtn.style.color = '#e5e7eb';
+          episodeBtn.style.transform = 'translateY(0) scale(1)';
+          episodeBtn.style.boxShadow = '0 4px 15px -4px rgba(0, 0, 0, 0.2)';
+        } else {
+          episodeBtn.style.transform = 'translateY(0) scale(1)';
+          episodeBtn.style.boxShadow = '0 8px 25px -8px rgba(34, 197, 94, 0.5)';
+        }
+      };
+
+      // 点击事件
+      episodeBtn.onclick = () => {
+        if (index !== currentEpisodeIndex) {
+          handleEpisodeChange(index + 1);
+        }
+        popup.remove();
+      };
+
+      grid.appendChild(episodeBtn);
+    });
+
+    // 将网格添加到滚动容器
+    scrollContainer.appendChild(grid);
+
+    // 组装弹窗
+    content.style.position = 'relative';
+    content.appendChild(closeBtn);
+    content.appendChild(title);
+    content.appendChild(scrollContainer);
+    popup.appendChild(content);
+
+    // 关闭弹窗事件
+    const closePopup = () => popup.remove();
+    closeBtn.onclick = closePopup;
+    popup.onclick = (e) => {
+      if (e.target === popup) closePopup();
+    };
+
+    // ESC键关闭
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closePopup();
+        document.removeEventListener('keydown', handleEsc);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+
+    // 优先添加到播放器容器，如果播放器全屏则添加到body
+    const playerContainer =
+      artRef.current?.closest('.art-container') || artRef.current;
+    const targetContainer =
+      playerContainer && document.fullscreenElement?.contains(playerContainer)
+        ? document.fullscreenElement
+        : document.body;
+
+    targetContainer.appendChild(popup);
+  };
+
+  // 更新播放器控制栏中的选集按钮显示
+  const updateEpisodeSelectorButton = () => {
+    if (!artPlayerRef.current || totalEpisodes <= 1) return;
+
+    // 查找选集按钮
+    const episodeBtn = document.querySelector('.episode-selector-btn');
+    if (episodeBtn) {
+      // 更新按钮内容
+      episodeBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 4h16v2H3V4zm0 5h16v2H3V9zm0 5h16v2H3v-2z" fill="currentColor"/></svg><span style="font-size: 10px; margin-left: 2px;">${
+        currentEpisodeIndex + 1
+      }/${totalEpisodes}</span>`;
+
+      // 更新tooltip
+      const controlItem = episodeBtn.closest('.art-control');
+      if (controlItem) {
+        controlItem.setAttribute(
+          'aria-label',
+          `选集 (${currentEpisodeIndex + 1}/${totalEpisodes})`
+        );
+      }
+    }
+  };
+
+  // 注入选集按钮的CSS样式
+  const injectEpisodeSelectorStyles = () => {
+    // 检查是否已经注入过样式
+    if (document.querySelector('#episode-selector-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'episode-selector-styles';
+    style.textContent = `
+      .episode-selector-btn {
+        display: flex !important;
+        align-items: center !important;
+        gap: 2px !important;
+        font-family: inherit !important;
+      }
+      .episode-selector-btn span {
+        white-space: nowrap !important;
+        font-weight: 500 !important;
+        opacity: 0.9 !important;
+      }
+      .episode-selector-popup {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+      }
+      .episode-selector-popup *::-webkit-scrollbar {
+        width: 8px;
+      }
+      .episode-selector-popup *::-webkit-scrollbar-track {
+        background: rgba(55, 65, 81, 0.3);
+        border-radius: 4px;
+        margin: 4px 0;
+      }
+      .episode-selector-popup *::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        border-radius: 4px;
+        border: 1px solid rgba(107, 114, 128, 0.3);
+      }
+      .episode-selector-popup *::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+      }
+    `;
+    document.head.appendChild(style);
+  };
+
   // 当集数索引变化时自动更新视频地址
   useEffect(() => {
     updateVideoUrl(detail, currentEpisodeIndex);
+    // 同时更新播放器控制栏的选集按钮显示
+    updateEpisodeSelectorButton();
   }, [detail, currentEpisodeIndex]);
 
   // 进入页面时直接获取全部源信息
@@ -1097,7 +1401,7 @@ function PlayPageClient() {
         isLive: false,
         muted: false,
         autoplay: true,
-        pip: true,
+        pip: false,
         autoSize: false,
         autoMini: false,
         screenshot: false,
@@ -1107,13 +1411,13 @@ function PlayPageClient() {
         playbackRate: true,
         aspectRatio: false,
         fullscreen: true,
-        fullscreenWeb: true,
+        fullscreenWeb: false,
         subtitleOffset: false,
         miniProgressBar: false,
         mutex: true,
         playsInline: true,
         autoPlayback: false,
-        airplay: true,
+        airplay: false,
         theme: '#22c55e',
         lang: 'zh-cn',
         hotkey: false,
@@ -1208,18 +1512,121 @@ function PlayPageClient() {
               return newVal ? '当前开启' : '当前关闭';
             },
           },
+          {
+            html: '画中画',
+            icon: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="12" y="8" width="6" height="4" rx="1" fill="currentColor"/></svg>',
+            tooltip: '开启画中画模式',
+            onClick() {
+              try {
+                if (artPlayerRef.current?.video) {
+                  if (document.pictureInPictureElement) {
+                    document.exitPictureInPicture();
+                    return '已退出画中画';
+                  } else {
+                    artPlayerRef.current.video.requestPictureInPicture();
+                    return '已开启画中画';
+                  }
+                }
+                return '功能不可用';
+              } catch (error) {
+                console.error('画中画操作失败:', error);
+                return '操作失败';
+              }
+            },
+          },
+          {
+            html: '投屏',
+            icon: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v6a2 2 0 01-2 2h-3l-1 2H8l-1-2H4a2 2 0 01-2-2V6z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="11" cy="9" r="1.5" fill="currentColor"/><path d="m8.5 11 1.5 1.5L13 9" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            tooltip: '投屏到其他设备',
+            onClick() {
+              try {
+                if (artPlayerRef.current?.video) {
+                  // 检查是否支持 Remote Playback API (Google Cast)
+                  if ('remote' in artPlayerRef.current.video) {
+                    const remote = (artPlayerRef.current.video as any).remote;
+                    if (remote.state === 'disconnected') {
+                      remote
+                        .prompt()
+                        .then(() => {
+                          return '正在连接投屏设备...';
+                        })
+                        .catch(() => {
+                          return '投屏连接失败';
+                        });
+                      return '正在搜索投屏设备...';
+                    } else if (remote.state === 'connected') {
+                      remote.disconnect();
+                      return '已断开投屏连接';
+                    }
+                  }
+                  // 尝试使用 WebKit 的 AirPlay API
+                  if (
+                    (artPlayerRef.current.video as any)
+                      .webkitShowPlaybackTargetPicker
+                  ) {
+                    (
+                      artPlayerRef.current.video as any
+                    ).webkitShowPlaybackTargetPicker();
+                    return '正在打开AirPlay选择器...';
+                  }
+                  // 如果都不支持，显示提示
+                  return '当前环境不支持投屏功能';
+                }
+                return '功能不可用';
+              } catch (error) {
+                console.error('投屏操作失败:', error);
+                return '投屏操作失败';
+              }
+            },
+          },
         ],
         // 控制栏配置
         controls: [
-          {
-            position: 'left',
-            index: 13,
-            html: '<i class="art-icon flex"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg></i>',
-            tooltip: '播放下一集',
-            click: function () {
-              handleNextEpisode();
-            },
-          },
+          // 上一集按钮
+          ...(totalEpisodes > 1
+            ? [
+                {
+                  position: 'left' as const,
+                  index: 12,
+                  html: '<i class="art-icon flex"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 18l-8.5-6L16 6v12zM6 6v12h-2V6h2z" fill="currentColor"/></svg></i>',
+                  tooltip: '播放上一集',
+                  click: function () {
+                    handlePreviousEpisode();
+                  },
+                },
+              ]
+            : []),
+          // 选集菜单按钮
+          ...(totalEpisodes > 1
+            ? [
+                {
+                  position: 'left' as const,
+                  index: 13,
+                  html: `<i class="art-icon flex episode-selector-btn"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 4h16v2H3V4zm0 5h16v2H3V9zm0 5h16v2H3v-2z" fill="currentColor"/></svg><span style="font-size: 10px; margin-left: 2px;">${
+                    currentEpisodeIndex + 1
+                  }/${totalEpisodes}</span></i>`,
+                  tooltip: `选集 (${currentEpisodeIndex + 1}/${totalEpisodes})`,
+                  click: function () {
+                    // 创建选集下拉菜单
+                    showEpisodeSelector();
+                  },
+                },
+              ]
+            : []),
+          // 下一集按钮
+          ...(totalEpisodes > 1
+            ? [
+                {
+                  position: 'left' as const,
+                  index: 14,
+                  html: '<i class="art-icon flex"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg></i>',
+                  tooltip: '播放下一集',
+                  click: function () {
+                    handleNextEpisode();
+                  },
+                },
+              ]
+            : []),
         ],
       });
 
@@ -1229,6 +1636,12 @@ function PlayPageClient() {
         // 更新视频时长
         const duration = artPlayerRef.current.duration || 0;
         setVideoDuration(duration);
+
+        // 更新选集按钮显示
+        updateEpisodeSelectorButton();
+
+        // 注入选集按钮样式
+        injectEpisodeSelectorStyles();
       });
 
       artPlayerRef.current.on('video:volumechange', () => {
