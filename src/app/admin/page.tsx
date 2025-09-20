@@ -909,8 +909,6 @@ const VideoSourceConfig = ({
 
   // 测速功能相关函数
   const testApiSpeed = async (source: DataSource) => {
-    const startTime = Date.now();
-
     // 更新测速状态为进行中
     setSpeedTestResults(
       (prev) =>
@@ -923,62 +921,59 @@ const VideoSourceConfig = ({
     );
 
     try {
-      // 直接访问API接口，不添加搜索参数
-      const testUrl = source.api;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
-
-      const response = await fetch(testUrl, {
-        method: 'GET',
-        signal: controller.signal,
+      // 使用后端代理服务进行测速
+      const response = await fetch('/api/admin/speed-test', {
+        method: 'POST',
         headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          Accept: 'application/json, text/plain, */*',
-          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          url: source.api,
+        }),
       });
 
-      clearTimeout(timeoutId);
-      const endTime = Date.now();
-      const responseTime = endTime - startTime;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `HTTP ${response.status}: ${response.statusText}`
+        );
+      }
 
-      if (response.ok) {
+      const result = await response.json();
+
+      if (result.success) {
         setSpeedTestResults(
           (prev) =>
             new Map(
               prev.set(source.key, {
                 key: source.key,
                 status: 'success',
-                speed: responseTime,
+                speed: result.speed,
               })
             )
         );
       } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        setSpeedTestResults(
+          (prev) =>
+            new Map(
+              prev.set(source.key, {
+                key: source.key,
+                status: 'error',
+                speed: result.speed || 0,
+                error: result.error || '测试失败',
+              })
+            )
+        );
       }
     } catch (error) {
-      const endTime = Date.now();
-      const responseTime = endTime - startTime;
-
-      let errorMessage = '测试失败';
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage = '请求超时';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-
       setSpeedTestResults(
         (prev) =>
           new Map(
             prev.set(source.key, {
               key: source.key,
               status: 'error',
-              speed: responseTime,
-              error: errorMessage,
+              speed: 0,
+              error: error instanceof Error ? error.message : '网络错误',
             })
           )
       );
