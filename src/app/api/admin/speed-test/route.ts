@@ -1,13 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { getAuthInfoFromCookie } from '@/lib/auth';
+import { getConfig } from '@/lib/config';
+
+export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
   try {
     // 验证用户权限
-    const authInfo = getAuthInfoFromBrowserCookie(
-      request.headers.get('cookie') || ''
-    );
-    if (!authInfo || (authInfo.role !== 'admin' && authInfo.role !== 'owner')) {
+    const authInfo = getAuthInfoFromCookie(request);
+    if (!authInfo || !authInfo.username) {
+      return NextResponse.json({ error: '权限不足' }, { status: 403 });
+    }
+
+    const username = authInfo.username;
+
+    // 获取管理员配置来验证用户角色
+    const adminConfig = await getConfig();
+
+    // 判定操作者角色
+    let operatorRole: 'owner' | 'admin' | 'user';
+    if (username === process.env.USERNAME) {
+      operatorRole = 'owner';
+    } else {
+      const userEntry = adminConfig.UserConfig.Users.find(
+        (u) => u.username === username
+      );
+      if (!userEntry) {
+        return NextResponse.json({ error: '用户不存在' }, { status: 401 });
+      }
+      operatorRole = userEntry.role;
+    }
+
+    // 只有管理员和站长可以使用测速功能
+    if (operatorRole !== 'admin' && operatorRole !== 'owner') {
       return NextResponse.json({ error: '权限不足' }, { status: 403 });
     }
 
