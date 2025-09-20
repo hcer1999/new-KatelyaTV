@@ -923,13 +923,11 @@ const VideoSourceConfig = ({
     );
 
     try {
-      // 构造测试请求URL，通常是 API + search?wd=test
-      const testUrl = source.api.includes('?')
-        ? `${source.api}&wd=测试&pg=1`
-        : `${source.api}?wd=测试&pg=1`;
+      // 直接访问API接口，不添加搜索参数
+      const testUrl = source.api;
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
 
       const response = await fetch(testUrl, {
         method: 'GET',
@@ -937,6 +935,8 @@ const VideoSourceConfig = ({
         headers: {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          Accept: 'application/json, text/plain, */*',
+          'Cache-Control': 'no-cache',
         },
       });
 
